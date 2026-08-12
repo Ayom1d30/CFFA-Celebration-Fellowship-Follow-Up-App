@@ -1,7 +1,20 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { Icon } from "@/components/ui/icons";
+import { getSessionUser } from "@/lib/data/server";
+import { isSupabaseConfigured } from "@/lib/supabase/config";
 
-export default function AdminLayout({ children }: { children: React.ReactNode }) {
+export default async function AdminLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const user = await getSessionUser();
+  if (!user) redirect("/login");
+  if (isSupabaseConfigured() && user.role !== "coordinator") {
+    redirect("/home");
+  }
+
   return (
     <div className="min-h-dvh">
       <header className="sticky top-0 z-30 border-b border-border bg-surface/90 backdrop-blur">

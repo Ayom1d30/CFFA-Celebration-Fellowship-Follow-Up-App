@@ -99,12 +99,12 @@ export const MOCK_NEEDS_FOLLOWUP: NeedsFollowUpMember[] = [
 ];
 
 export const MOCK_ACTIVE_MEMBERS: User[] = [
-  { id: "u-chi", name: "Chioma", email: "chi@celebration.org", role: "member", createdAt: "2026-01-12T09:00:00Z" },
-  { id: "u-femi", name: "Femi", email: "femi@celebration.org", role: "member", createdAt: "2026-01-12T09:00:00Z" },
-  { id: "u-sarah", name: "Sarah", email: "sarah@celebration.org", role: "member", createdAt: "2026-01-12T09:00:00Z" },
-  { id: "u-daniel", name: "Daniel", email: "daniel@celebration.org", role: "member", createdAt: "2026-01-12T09:00:00Z" },
-  { id: "u-tolu", name: "Tolu", email: "tolu@celebration.org", role: "member", createdAt: "2026-01-12T09:00:00Z" },
-  { id: "u-grace", name: "Grace", email: "grace@celebration.org", role: "member", createdAt: "2026-01-12T09:00:00Z" },
+  { id: "u-chi", name: "Chioma", email: "chi@celebration.org", role: "member", lastActiveAt: new Date(Date.now() - 3600000).toISOString(), createdAt: "2026-01-12T09:00:00Z" },
+  { id: "u-femi", name: "Femi", email: "femi@celebration.org", role: "member", lastActiveAt: new Date(Date.now() - 7200000).toISOString(), createdAt: "2026-01-12T09:00:00Z" },
+  { id: "u-sarah", name: "Sarah", email: "sarah@celebration.org", role: "member", lastActiveAt: new Date(Date.now() - 10800000).toISOString(), createdAt: "2026-01-12T09:00:00Z" },
+  { id: "u-daniel", name: "Daniel", email: "daniel@celebration.org", role: "member", lastActiveAt: new Date(Date.now() - 86400000 * 9).toISOString(), createdAt: "2026-01-12T09:00:00Z" },
+  { id: "u-tolu", name: "Tolu", email: "tolu@celebration.org", role: "member", lastActiveAt: new Date(Date.now() - 86400000 * 12).toISOString(), createdAt: "2026-01-12T09:00:00Z" },
+  { id: "u-grace", name: "Grace", email: "grace@celebration.org", role: "member", lastActiveAt: new Date(Date.now() - 86400000 * 7).toISOString(), createdAt: "2026-01-12T09:00:00Z" },
 ];
 
 export function daysSince(iso?: string | null): string {

@@ -1,12 +1,18 @@
+import { redirect } from "next/navigation";
 import { Card } from "@/components/ui/card";
 import { LeaderboardRow } from "@/components/member/leaderboard-row";
 import { Badge } from "@/components/ui/badge";
-import { MOCK_LEADERBOARD, CURRENT_USER } from "@/lib/mock-data";
+import { getLeaderboardData, getSessionUser } from "@/lib/data/server";
 
-export default function LeaderboardPage() {
-  const myRank = MOCK_LEADERBOARD.find(
-    (entry) => entry.userId === CURRENT_USER.id
-  );
+export default async function LeaderboardPage() {
+  const [leaderboard, user] = await Promise.all([
+    getLeaderboardData(),
+    getSessionUser(),
+  ]);
+  if (!user) redirect("/login");
+
+  const top = leaderboard[0] ?? null;
+  const mine = leaderboard.find((e) => e.userId === user.id);
 
   return (
     <div className="flex flex-col gap-5">
@@ -17,29 +23,41 @@ export default function LeaderboardPage() {
         </p>
       </header>
 
-      {myRank ? (
+      {mine ? (
         <Card className="flex items-center justify-between p-5">
           <div>
-            <p className="text-xs font-bold tracking-wider text-muted">YOUR RANK</p>
-            <p className="mt-1 text-2xl font-bold text-primary">
-              #{myRank.rank}
+            <p className="text-xs font-bold tracking-wider text-muted">
+              YOUR RANK
             </p>
+            <p className="mt-1 text-2xl font-bold text-primary">#{mine.rank}</p>
           </div>
           <Badge color="primary" icon="sparkle">
-            {myRank.totalXp.toLocaleString()} XP
+            {mine.totalXp.toLocaleString()} XP
           </Badge>
         </Card>
       ) : null}
 
-      <Card className="divide-y divide-border p-2">
-        {MOCK_LEADERBOARD.map((entry) => (
-          <LeaderboardRow
-            key={entry.userId}
-            entry={entry}
-            highlight={entry.userId === CURRENT_USER.id}
-          />
-        ))}
-      </Card>
+      {leaderboard.length > 0 ? (
+        <Card className="divide-y divide-border p-2">
+          {leaderboard.map((entry) => (
+            <LeaderboardRow
+              key={entry.userId}
+              entry={entry}
+              highlight={entry.userId === user.id}
+            />
+          ))}
+        </Card>
+      ) : (
+        <div className="rounded-2xl border border-dashed border-border p-8 text-center text-sm text-muted">
+          Leaderboard will populate as members earn XP.
+        </div>
+      )}
+
+      {top && top.userId !== user.id ? (
+        <p className="text-center text-xs text-muted">
+          {top.name} leads with {top.totalXp.toLocaleString()} XP
+        </p>
+      ) : null}
     </div>
   );
 }

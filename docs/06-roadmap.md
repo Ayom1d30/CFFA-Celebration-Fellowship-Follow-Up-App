@@ -10,26 +10,26 @@ Tracks the 4-week MVP and the P0/P1/P2 backlog from the PRD.
 
 ### P0 — Must Have
 
-- [ ] Member
-  - [ ] Authentication (FR-01)
-  - [ ] Member profile (FR-02)
-  - [ ] Weekly buddy assignment (FR-03)
-  - [ ] Buddy dashboard (FR-11)
-  - [ ] Basic messaging (FR-04)
-  - [ ] Weekly mission (FR-06)
-  - [ ] QR buddy check-in (FR-07)
-  - [ ] XP system (FR-08)
-- [ ] Admin
-  - [ ] Admin authentication
-  - [ ] Member list
-  - [ ] Fellowship engagement overview (FR-12)
-  - [ ] Needs-follow-up list (FR-13)
+- [x] Member
+  - [x] Authentication (FR-01) — login/signup, email+password via Supabase (falls back to demo mode when unconfigured)
+  - [x] Member profile (FR-02)
+  - [x] Weekly buddy assignment (FR-03) — pairing table + weekly pairing RPC
+  - [x] Buddy dashboard (FR-11)
+  - [x] Basic messaging (FR-04) — realtime chat
+  - [x] Weekly mission (FR-06)
+  - [x] QR buddy check-in (FR-07) — create/verify QR functions + screens
+  - [x] XP system (FR-08)
+- [x] Admin
+  - [x] Admin authentication — admin role guard
+  - [x] Member list
+  - [x] Fellowship engagement overview (FR-12)
+  - [x] Needs-follow-up list (FR-13)
 
 ### P1 — Should Have
 
-- [ ] Quick messages (FR-05)
-- [ ] Individual leaderboard (FR-09)
-- [ ] Streaks
+- [x] Quick messages (FR-05) — chat quick replies, xp_events with kind `quick_message`
+- [x] Individual leaderboard (FR-09)
+- [x] Streaks — streak counter on weekly data + profile
 - [ ] Basic engagement analytics
 - [ ] Improved notifications
 - [ ] Character progression

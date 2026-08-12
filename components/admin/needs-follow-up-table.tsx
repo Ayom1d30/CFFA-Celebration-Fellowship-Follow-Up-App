@@ -1,6 +1,7 @@
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ButtonLink } from "@/components/ui/button";
+import { formatLastActivity } from "@/lib/utils";
 import type { NeedsFollowUpMember } from "@/lib/types";
 
 export function NeedsFollowUpTable({
@@ -25,7 +26,7 @@ export function NeedsFollowUpTable({
             <div className="min-w-0 flex-1">
               <p className="font-semibold text-foreground">{member.name}</p>
               <p className="text-xs text-muted">
-                Last activity: {member.lastActivity ?? "Never"}
+                Last activity: {formatLastActivity(member.lastActivity)}
               </p>
             </div>
             {member.buddyName ? (

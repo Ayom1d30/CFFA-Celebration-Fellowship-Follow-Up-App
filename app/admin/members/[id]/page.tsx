@@ -2,16 +2,20 @@ import Link from "next/link";
 import { Card } from "@/components/ui/card";
 import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Button, ButtonLink } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icons";
 import { ProgressBar } from "@/components/ui/progress-bar";
-import {
-  CURRENT_PAIR,
-  MOCK_BUDDY,
-  MOCK_MISSION,
-  MOCK_ACTIVE_MEMBERS,
-  CURRENT_USER,
-} from "@/lib/mock-data";
+import { getMemberDetail } from "@/lib/data/server";
+import { formatLastActivity } from "@/lib/utils";
+
+const ACTION_LABELS: Record<string, string> = {
+  message: "Messaged buddy",
+  weekly_followup: "Weekly mission completed",
+  checkin: "Buddy check-in",
+  attendance: "Attended fellowship",
+  encourage: "Encouraged someone",
+  special_mission: "Special mission completed",
+};
 
 export default async function MemberDetailPage({
   params,
@@ -19,13 +23,30 @@ export default async function MemberDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const member =
-    MOCK_ACTIVE_MEMBERS.find((m) => m.id === id) ??
-    MOCK_ACTIVE_MEMBERS[0] ??
-    CURRENT_USER;
+  const detail = await getMemberDetail(id);
 
-  const pair = CURRENT_PAIR;
-  const buddy = MOCK_BUDDY;
+  if (!detail) {
+    return (
+      <div className="flex flex-col gap-6">
+        <header className="flex items-center gap-3">
+          <Link
+            href="/admin"
+            className="flex h-9 w-9 items-center justify-center rounded-full bg-white text-foreground shadow-sm transition-colors hover:bg-black/5"
+            aria-label="Back to dashboard"
+          >
+            <Icon name="back" className="h-5 w-5" />
+          </Link>
+          <h1 className="text-2xl font-bold text-foreground">Member not found</h1>
+        </header>
+        <Card className="p-5 text-sm text-muted">
+          This member could not be loaded.
+        </Card>
+      </div>
+    );
+  }
+
+  const { member, xp, streak, buddy, mission, recentActivity } = detail;
+  const engaged = buddy?.status === "completed";
 
   return (
     <div className="flex flex-col gap-6">
@@ -40,24 +61,30 @@ export default async function MemberDetailPage({
         <div className="flex items-center gap-3">
           <Avatar name={member.name} avatar={member.avatar} size="lg" />
           <div>
-            <h1 className="text-2xl font-bold text-foreground">{member.name}</h1>
-            <p className="text-sm text-muted">{member.email}</p>
+            <h1 className="text-2xl font-bold text-foreground">
+              {member.name}
+            </h1>
+            <p className="text-sm text-muted">
+              {member.email} · last active {formatLastActivity(member.lastActiveAt)}
+            </p>
           </div>
         </div>
-        <Badge color={pair.status === "completed" ? "success" : "warning"}>
-          {pair.status === "completed" ? "Engaged" : "Needs follow-up"}
+        <Badge color={engaged ? "success" : "warning"}>
+          {engaged ? "Engaged" : "Needs follow-up"}
         </Badge>
       </header>
 
       <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <Card className="p-5">
-          <p className="text-xs font-bold tracking-wider text-muted">ENGAGEMENT</p>
-          <p className="mt-2 text-2xl font-bold text-foreground">340 XP</p>
+          <p className="text-xs font-bold tracking-wider text-muted">
+            ENGAGEMENT
+          </p>
+          <p className="mt-2 text-2xl font-bold text-foreground">{xp} XP</p>
           <div className="mt-3">
-            <ProgressBar value={62} />
+            <ProgressBar value={Math.min(100, Math.round((xp / 1000) * 100))} />
           </div>
           <p className="mt-2 text-xs text-muted">
-            Last active: 9 days ago · 5-week streak
+            {streak}-week streak
           </p>
         </Card>
 
@@ -65,40 +92,86 @@ export default async function MemberDetailPage({
           <p className="text-xs font-bold tracking-wider text-muted">
             ASSIGNED BUDDY
           </p>
-          <div className="mt-3 flex items-center gap-3">
-            <Avatar name={buddy.name} avatar={buddy.avatar} size="md" />
-            <div>
-              <p className="font-bold text-foreground">{buddy.name}</p>
-              <p className="text-xs text-muted">
-                {pair.status === "completed" ? "Check-in completed" : "Check-in pending"}
-              </p>
+          {buddy ? (
+            <div className="mt-3 flex items-center gap-3">
+              <Avatar name={buddy.name} avatar={buddy.avatar} size="md" />
+              <div>
+                <p className="font-bold text-foreground">{buddy.name}</p>
+                <p className="text-xs text-muted">
+                  {buddy.status === "completed"
+                    ? "Check-in completed"
+                    : buddy.status === "contacted"
+                      ? "Contacted this week"
+                      : "Check-in pending"}
+                </p>
+              </div>
             </div>
-          </div>
+          ) : (
+            <p className="mt-3 text-sm text-muted">No buddy assigned yet.</p>
+          )}
         </Card>
 
         <Card className="p-5">
           <p className="text-xs font-bold tracking-wider text-muted">
             CURRENT MISSION
           </p>
-          <p className="mt-2 font-bold text-foreground">{MOCK_MISSION.title}</p>
-          <Badge color="primary" icon="sparkle" className="mt-2">
-            +{MOCK_MISSION.xpReward} XP
-          </Badge>
+          {mission ? (
+            <>
+              <p className="mt-2 font-bold text-foreground">{mission.title}</p>
+              <Badge color="primary" icon="sparkle" className="mt-2">
+                +{mission.xpReward} XP
+                {mission.completed ? " · Done" : ""}
+              </Badge>
+            </>
+          ) : (
+            <p className="mt-3 text-sm text-muted">No mission this week.</p>
+          )}
         </Card>
       </section>
 
       <Card className="p-5">
         <p className="text-xs font-bold tracking-wider text-muted">
-          COORDINATOR ACTIONS
+          RECENT ACTIVITY
+        </p>
+        {recentActivity.length === 0 ? (
+          <p className="mt-3 text-sm text-muted">No recorded activity yet.</p>
+        ) : (
+          <div className="mt-3 divide-y divide-border">
+            {recentActivity.map((a, i) => (
+              <div key={i} className="flex items-center justify-between py-2.5">
+                <div>
+                  <p className="text-sm font-semibold text-foreground">
+                    {ACTION_LABELS[a.action] ?? a.action}
+                  </p>
+                  <p className="text-xs text-muted">
+                    {new Date(a.createdAt).toLocaleDateString(undefined, {
+                      month: "short",
+                      day: "numeric",
+                    })}
+                  </p>
+                </div>
+                <Badge color="primary">+{a.points} XP</Badge>
+              </div>
+            ))}
+          </div>
+        )}
+      </Card>
+
+      <Card className="p-5">
+        <p className="text-xs font-bold tracking-wider text-muted">
+          COORDINATOR ACTION
         </p>
         <p className="mt-2 text-sm text-foreground/80">
           Reach out personally — CFFA identifies who may need attention; it does
           not replace human follow-up.
         </p>
         <div className="mt-4 flex flex-col gap-3 sm:flex-row">
-          <ButtonLink href="/admin" variant="secondary">
+          <Link
+            href="/admin"
+            className="inline-flex h-11 items-center justify-center gap-2 rounded-full border border-border bg-surface px-5 text-sm font-semibold text-foreground transition-colors hover:bg-black/5"
+          >
             Back to dashboard
-          </ButtonLink>
+          </Link>
           <Button>Mark as followed up</Button>
         </div>
       </Card>

@@ -1,11 +1,12 @@
-import Link from "next/link";
 import { Card } from "@/components/ui/card";
 import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { MOCK_BUDDY, MOCK_MESSAGES } from "@/lib/mock-data";
+import Link from "next/link";
+import { getChatList } from "@/lib/data/server";
+import { formatRelativeTime } from "@/lib/utils";
 
-export default function ChatListPage() {
-  const lastMessage = MOCK_MESSAGES[MOCK_MESSAGES.length - 1];
+export default async function ChatListPage() {
+  const conversations = await getChatList();
 
   return (
     <div className="flex flex-col gap-5">
@@ -14,33 +15,47 @@ export default function ChatListPage() {
         <p className="mt-1 text-muted">Follow up with your buddy.</p>
       </header>
 
-      <Card>
-        <Link
-          href={`/chat/${MOCK_BUDDY.id}`}
-          className="flex items-center gap-3 p-4 transition-colors hover:bg-black/5"
-        >
-          <Avatar
-            name={MOCK_BUDDY.name}
-            avatar={MOCK_BUDDY.avatar}
-            size="md"
-            online={Boolean(MOCK_BUDDY.lastActiveAt)}
-          />
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center justify-between">
-              <p className="font-bold text-foreground">{MOCK_BUDDY.name}</p>
-              <span className="text-xs text-muted">Tue</span>
-            </div>
-            <p className="truncate text-sm text-muted">
-              {lastMessage.senderId === MOCK_BUDDY.id ? "" : "You: "}
-              {lastMessage.message}
-            </p>
-          </div>
-        </Link>
-      </Card>
+      {conversations.length === 0 ? (
+        <div className="flex flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-border p-8 text-center">
+          <p className="font-semibold text-foreground">No conversations yet</p>
+          <p className="text-sm text-muted">
+            Your buddy&apos;s messages will show up here each week.
+          </p>
+        </div>
+      ) : (
+        <Card>
+          {conversations.map((c) => (
+            <Link
+              key={c.id}
+              href={`/chat/${c.id}`}
+              className="flex items-center gap-3 p-4 transition-colors hover:bg-black/5"
+            >
+              <Avatar
+                name={c.name}
+                avatar={c.avatar}
+                size="md"
+                online={c.online}
+              />
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="truncate font-bold text-foreground">{c.name}</p>
+                  <span className="shrink-0 text-xs text-muted">
+                    {formatRelativeTime(c.lastMessageAt)}
+                  </span>
+                </div>
+                <p className="truncate text-sm text-muted">
+                  {c.lastMessageMine ? "You: " : ""}
+                  {c.lastMessage}
+                </p>
+              </div>
+            </Link>
+          ))}
+        </Card>
+      )}
 
       <div className="flex items-center justify-center gap-2 rounded-2xl border border-dashed border-border p-6 text-sm text-muted">
         <Badge color="primary">Tip</Badge>
-        Your conversation list grows as you get new buddies each week.
+        New buddies appear here each Tuesday.
       </div>
     </div>
   );

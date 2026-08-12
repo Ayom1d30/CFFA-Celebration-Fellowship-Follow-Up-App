@@ -1,23 +1,29 @@
+import { redirect } from "next/navigation";
 import { Card } from "@/components/ui/card";
 import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { ProgressBar } from "@/components/ui/progress-bar";
 import { ButtonLink } from "@/components/ui/button";
-import {
-  CURRENT_USER,
-  CURRENT_USER_STREAK,
-  CURRENT_USER_XP,
-  MOCK_BUDDY,
-} from "@/lib/mock-data";
+import { Icon } from "@/components/ui/icons";
+import { signOut } from "@/lib/actions/auth";
+import { getHomeData, getProfileData } from "@/lib/data/server";
 
-const activity = [
-  { label: "Buddy check-in with Tomi", xp: "+15", date: "Last Tuesday" },
-  { label: "Weekly mission completed", xp: "+10", date: "Last Tuesday" },
-  { label: "Messaged your buddy", xp: "+5", date: "Last Tuesday" },
-  { label: "Attended fellowship", xp: "+10", date: "Sunday" },
-];
+const ACTION_LABELS: Record<string, string> = {
+  message: "Messaged your buddy",
+  weekly_followup: "Weekly mission completed",
+  checkin: "Buddy check-in",
+  attendance: "Attended fellowship",
+  encourage: "Encouraged someone",
+  special_mission: "Special mission completed",
+};
 
-export default function ProfilePage() {
+export default async function ProfilePage() {
+  const [profile, home] = await Promise.all([getProfileData(), getHomeData()]);
+  if (!profile) redirect("/login");
+
+  const { user, xp, streak, recentActivity } = profile;
+  const buddy = home?.buddy ?? null;
+
   return (
     <div className="flex flex-col gap-5">
       <header>
@@ -25,51 +31,86 @@ export default function ProfilePage() {
       </header>
 
       <Card className="flex flex-col items-center gap-3 p-6 text-center">
-        <Avatar name={CURRENT_USER.name} avatar={CURRENT_USER.avatar} size="lg" />
+        <Avatar name={user.name} avatar={user.avatar} size="lg" />
         <div>
-          <p className="text-xl font-bold text-foreground">{CURRENT_USER.name}</p>
+          <p className="text-xl font-bold text-foreground">{user.name}</p>
           <p className="text-sm text-muted">
-            {CURRENT_USER.team
-              ? "Team " + CURRENT_USER.team.split("-").map((w) => w[0]?.toUpperCase() + w.slice(1)).join(" ")
+            {user.team
+              ? "Team " +
+                user.team
+                  .split("-")
+                  .map((w) => (w[0]?.toUpperCase() ?? "") + w.slice(1))
+                  .join(" ")
               : "Member"}{" "}
-            · {CURRENT_USER.role}
+            · {user.role}
           </p>
         </div>
         <div className="flex gap-4">
           <div className="text-center">
-            <p className="text-lg font-bold text-primary">{CURRENT_USER_XP} XP</p>
+            <p className="text-lg font-bold text-primary">{xp} XP</p>
             <p className="text-xs text-muted">Total</p>
           </div>
           <div className="text-center">
-            <p className="text-lg font-bold text-primary">
-              {CURRENT_USER_STREAK} ❤️
-            </p>
+            <p className="text-lg font-bold text-primary">{streak} ❤️</p>
             <p className="text-xs text-muted">Week streak</p>
           </div>
         </div>
         <div className="w-full max-w-xs">
-          <ProgressBar value={70} />
-          <p className="mt-1.5 text-xs text-muted">70% toward next milestone</p>
+          <ProgressBar value={Math.min(100, Math.round((xp / 1000) * 100))} />
+          <p className="mt-1.5 text-xs text-muted">
+            {Math.min(100, Math.round((xp / 1000) * 100))}% toward the next
+            milestone
+          </p>
         </div>
-        <ButtonLink href="/checkin" variant="secondary" size="sm">
-          Check in with {MOCK_BUDDY.name}
-        </ButtonLink>
+        {buddy ? (
+          <ButtonLink href="/checkin" variant="secondary" size="sm">
+            Check in with {buddy.name}
+          </ButtonLink>
+        ) : null}
       </Card>
 
       <Card className="p-5">
-        <p className="text-xs font-bold tracking-wider text-muted">RECENT ACTIVITY</p>
-        <div className="mt-3 divide-y divide-border">
-          {activity.map((a) => (
-            <div key={a.label} className="flex items-center justify-between py-2.5">
-              <div>
-                <p className="text-sm font-semibold text-foreground">{a.label}</p>
-                <p className="text-xs text-muted">{a.date}</p>
+        <p className="text-xs font-bold tracking-wider text-muted">
+          RECENT ACTIVITY
+        </p>
+        {recentActivity.length === 0 ? (
+          <p className="mt-3 text-sm text-muted">
+            No activity yet — message your buddy to start earning XP.
+          </p>
+        ) : (
+          <div className="mt-3 divide-y divide-border">
+            {recentActivity.map((a, i) => (
+              <div
+                key={i}
+                className="flex items-center justify-between py-2.5"
+              >
+                <div>
+                  <p className="text-sm font-semibold text-foreground">
+                    {ACTION_LABELS[a.action] ?? a.action}
+                  </p>
+                  <p className="text-xs text-muted">
+                    {new Date(a.createdAt).toLocaleDateString(undefined, {
+                      month: "short",
+                      day: "numeric",
+                    })}
+                  </p>
+                </div>
+                <Badge color="primary">+{a.points} XP</Badge>
               </div>
-              <Badge color="primary">+{a.xp.replace("+", "")} XP</Badge>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </Card>
+
+      <form action={signOut}>
+        <button
+          type="submit"
+          className="flex w-full items-center justify-center gap-2 rounded-2xl border border-border bg-surface py-3 text-sm font-semibold text-muted transition-colors hover:bg-danger/10 hover:text-danger"
+        >
+          <Icon name="logout" className="h-5 w-5" />
+          Sign out
+        </button>
+      </form>
     </div>
   );
 }
