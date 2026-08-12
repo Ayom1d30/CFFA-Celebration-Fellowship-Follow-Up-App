@@ -2,22 +2,6 @@
 -- Tables, indexes, RLS policies, and helper functions.
 
 -- ============================================================
--- Helper: is the calling user a coordinator?
--- ============================================================
-create or replace function public.is_coordinator()
-returns boolean
-language sql
-stable
-security definer
-set search_path = public
-as $$
-  select exists (
-    select 1 from public.users
-    where id = auth.uid() and role = 'coordinator'
-  );
-$$;
-
--- ============================================================
 -- users
 -- ============================================================
 create table if not exists public.users (
@@ -64,6 +48,22 @@ drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created
   after insert on auth.users
   for each row execute function public.handle_new_user();
+
+-- ============================================================
+-- Helper: is the calling user a coordinator?
+-- ============================================================
+create or replace function public.is_coordinator()
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1 from public.users
+    where id = auth.uid() and role = 'coordinator'
+  );
+$$;
 
 -- ============================================================
 -- teams (P2)

@@ -10,6 +10,10 @@ drop policy if exists "members update their own pairs" on public.buddy_pairs;
 drop policy if exists "users send their own messages" on public.messages;
 drop policy if exists "users complete their own missions" on public.mission_completions;
 
+-- 0001 defined these with returns table(...); 0002 changes them to jsonb.
+drop function if exists public.get_engagement_overview();
+drop function if exists public.get_needs_followup(integer);
+
 -- ============================================================
 -- Streak: consecutive active weeks ending now (or last week).
 -- ============================================================
