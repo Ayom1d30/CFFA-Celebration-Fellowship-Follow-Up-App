@@ -4,6 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "db:migrate": "node scripts/db-migrate.cjs",
+    "predev": "npm run db:migrate",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
@@ -25,6 +27,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.3.0",
+    "pg": "^8.23.0",
     "tailwindcss": "^4",
     "typescript": "^5"
   }
