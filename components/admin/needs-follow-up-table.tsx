@@ -1,6 +1,7 @@
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ButtonLink } from "@/components/ui/button";
+import { MarkFollowedUpButton } from "@/components/admin/mark-followed-up-button";
 import { formatLastActivity } from "@/lib/utils";
 import type { NeedsFollowUpMember } from "@/lib/types";
 
@@ -32,13 +33,19 @@ export function NeedsFollowUpTable({
             {member.buddyName ? (
               <Badge color="primary">Buddy: {member.buddyName}</Badge>
             ) : null}
-            <ButtonLink
-              href={`/admin/members/${member.memberId}`}
-              size="sm"
-              variant="secondary"
-            >
-              View
-            </ButtonLink>
+            <div className="flex items-center gap-2">
+              <MarkFollowedUpButton
+                memberId={member.memberId}
+                label="Followed up"
+              />
+              <ButtonLink
+                href={`/admin/members/${member.memberId}`}
+                size="sm"
+                variant="secondary"
+              >
+                View
+              </ButtonLink>
+            </div>
           </div>
         ))}
       </div>

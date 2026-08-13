@@ -2,9 +2,9 @@ import Link from "next/link";
 import { Card } from "@/components/ui/card";
 import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icons";
 import { ProgressBar } from "@/components/ui/progress-bar";
+import { MarkFollowedUpButton } from "@/components/admin/mark-followed-up-button";
 import { getMemberDetail } from "@/lib/data/server";
 import { formatLastActivity } from "@/lib/utils";
 
@@ -172,7 +172,7 @@ export default async function MemberDetailPage({
           >
             Back to dashboard
           </Link>
-          <Button>Mark as followed up</Button>
+          <MarkFollowedUpButton memberId={member.id} />
         </div>
       </Card>
     </div>
