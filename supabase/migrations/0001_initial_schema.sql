@@ -313,7 +313,7 @@ begin
     raise exception 'Already checked in this week';
   end if;
 
-  v_token := encode(gen_random_bytes(24), 'hex');
+  v_token := encode(extensions.gen_random_bytes(24), 'hex');
 
   insert into public.checkin_tokens (pair_id, token, created_by, expires_at)
   values (p_pair_id, v_token, auth.uid(), now() + interval '5 minutes');
