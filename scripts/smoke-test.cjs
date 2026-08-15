@@ -224,6 +224,65 @@ async function main() {
   );
   await maryRt.removeChannel(rtChannel);
 
+  // ---- Read receipts (FR-04: sent vs seen) -----------------------------------
+  const unreadBefore = await pg.query(
+    "select count(*)::int as n from public.messages where receiver_id = $1 and sender_id = $2 and read_at is null",
+    [mary.id, buddyId]
+  );
+  check(
+    "unread count is positive before opening the chat",
+    Number(unreadBefore.rows[0].n) > 0,
+    "expected unread messages"
+  );
+
+  // buddy (sender) watches for the message being marked seen.
+  const buddyRt = await sessionClient(
+    (await clientFor().auth.signInWithPassword({
+      email: buddyEmail,
+      password: SEED_PASSWORD,
+    })).data.session
+  );
+  let seenUpdate = null;
+  const seenChannel = buddyRt
+    .channel("smoke-seen")
+    .on(
+      "postgres_changes",
+      {
+        event: "UPDATE",
+        schema: "public",
+        table: "messages",
+        filter: `sender_id=eq.${buddyId}`,
+      },
+      (payload) => {
+        if (payload.new && payload.new.read_at) seenUpdate = payload;
+      }
+    )
+    .subscribe();
+  await new Promise((r) => setTimeout(r, 2000));
+
+  await maryRt.rpc("mark_conversation_read", { p_partner_id: buddyId });
+
+  const seenDeadline = Date.now() + 10000;
+  while (!seenUpdate && Date.now() < seenDeadline) {
+    await new Promise((r) => setTimeout(r, 250));
+  }
+  check(
+    "sender sees the read receipt (seen) in realtime",
+    !!seenUpdate,
+    "UPDATE event with read_at not received"
+  );
+
+  const unreadAfter = await pg.query(
+    "select count(*)::int as n from public.messages where receiver_id = $1 and sender_id = $2 and read_at is null",
+    [mary.id, buddyId]
+  );
+  check(
+    "unread clears after reading the chat",
+    Number(unreadAfter.rows[0].n) === 0,
+    `expected 0 unread, got ${unreadAfter.rows[0].n}`
+  );
+  await buddyRt.removeChannel(seenChannel);
+
   // ---- Weekly mission (FR-06) ----------------------------------------------
   console.log("\n== WEEKLY MISSION ==");
 
@@ -264,6 +323,69 @@ async function main() {
 
   const lb = await maryClient.rpc("get_leaderboard", { p_limit: 50 });
   check("leaderboard returns rows", !lb.error && Array.isArray(lb.data) && lb.data.length > 0, lb.error?.message);
+
+  if (!lb.error && Array.isArray(lb.data) && lb.data.length > 0) {
+    // Competition ranking: tied scores share a rank; the next rank skips the
+    // tie. The rank must come from the score, never from the row position.
+    let expRank = 0;
+    let prevXp = null;
+    const rankingOk = lb.data.every((row, i) => {
+      const xp = Number(row.total_xp);
+      if (xp !== prevXp) expRank = i + 1;
+      prevXp = xp;
+      return Number(row.rank) === expRank;
+    });
+    check(
+      "leaderboard uses competition ranking (1, 2, 3, 3, 5)",
+      rankingOk,
+      "rank must match competition ranking, not row position"
+    );
+
+    // Deterministic secondary sort for display, without affecting ranks.
+    const tieSortOk = lb.data.every(
+      (row, i) =>
+        i === 0 ||
+        Number(row.total_xp) < Number(lb.data[i - 1].total_xp) ||
+        String(row.name) >= String(lb.data[i - 1].name)
+    );
+    check(
+      "leaderboard tie display sorted by name asc",
+      tieSortOk,
+      "tied rows must be ordered deterministically"
+    );
+  }
+
+  // Force a tie to prove tied ranks and the gap behaviour end-to-end.
+  const profM = await maryClient.rpc("get_my_profile");
+  const profB = await buddyClient.rpc("get_my_profile");
+  if (!profM.error && !profB.error) {
+    const mXp = Number(profM.data.xp);
+    const bXp = Number(profB.data.xp);
+    const mx = Math.max(mXp, bXp);
+    if (mXp !== bXp) {
+      const lowerId = mXp < bXp ? mary.id : buddyId;
+      await pg.query(
+        "insert into public.points (user_id, action, points) values ($1, 'special_mission', $2)",
+        [lowerId, Math.abs(mXp - bXp)]
+      );
+    }
+    const lbTie = await maryClient.rpc("get_leaderboard", { p_limit: 50 });
+    if (!lbTie.error && Array.isArray(lbTie.data)) {
+      const tied = lbTie.data.filter((r) => Number(r.total_xp) === mx);
+      check(
+        "tied members share the same rank",
+        tied.length >= 2 && new Set(tied.map((r) => Number(r.rank))).size === 1,
+        "tied members must have identical rank"
+      );
+      const idx = lbTie.data.findIndex((r) => Number(r.total_xp) === mx);
+      const next = lbTie.data[idx + tied.length];
+      check(
+        "next rank accounts for the number of tied members",
+        !next || Number(next.rank) === idx + tied.length + 1,
+        "next rank must skip past the tie"
+      );
+    }
+  }
 
   // ---- Coordinator dashboard (FR-12 / FR-13) -------------------------------
   console.log("\n== COORDINATOR DASHBOARD ==");
