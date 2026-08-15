@@ -2,14 +2,21 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { QUICK_MESSAGES } from "@/lib/constants";
 
-export function QuickMessages({ onSend }: { onSend: (text: string) => void }) {
+export function QuickMessages({
+  suggestions,
+  onSend,
+}: {
+  suggestions: string[];
+  onSend: (text: string) => void;
+}) {
   const [sent, setSent] = useState<string | null>(null);
+
+  if (suggestions.length === 0) return null;
 
   return (
     <div className="flex gap-2 overflow-x-auto pb-1">
-      {QUICK_MESSAGES.map((text) => (
+      {suggestions.map((text) => (
         <button
           key={text}
           type="button"

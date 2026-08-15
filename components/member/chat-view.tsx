@@ -8,6 +8,7 @@ import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icons";
 import { Input } from "@/components/ui/input";
+import { getContextualSuggestions } from "@/lib/chat-suggestions";
 import { sendBuddyMessage } from "@/lib/data/client";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { createClient } from "@/lib/supabase/client";
@@ -40,6 +41,18 @@ export function ChatView({
     [messages]
   );
 
+  const buddyFirstName = buddyName.split(" ")[0];
+
+  const suggestions = useMemo(
+    () =>
+      getContextualSuggestions({
+        messages: sorted,
+        currentUserId,
+        buddyFirstName,
+      }),
+    [sorted, currentUserId, buddyFirstName]
+  );
+
   useEffect(() => {
     scroller.current?.scrollTo({
       top: scroller.current.scrollHeight,
@@ -63,17 +76,21 @@ export function ChatView({
         (payload) => {
           const row = payload.new as Record<string, unknown>;
           if (String(row.sender_id) === buddyId) {
-            setMessages((prev) => [
-              ...prev,
-              {
-                id: String(row.id),
-                senderId: String(row.sender_id),
-                receiverId: String(row.receiver_id),
-                message: String(row.message),
-                isQuick: Boolean(row.is_quick),
-                createdAt: String(row.created_at),
-              },
-            ]);
+            setMessages((prev) =>
+              prev.some((m) => m.id === String(row.id))
+                ? prev
+                : [
+                    ...prev,
+                    {
+                      id: String(row.id),
+                      senderId: String(row.sender_id),
+                      receiverId: String(row.receiver_id),
+                      message: String(row.message),
+                      isQuick: Boolean(row.is_quick),
+                      createdAt: String(row.created_at),
+                    },
+                  ]
+            );
           }
         }
       )
@@ -158,7 +175,7 @@ export function ChatView({
         >
           {sorted.length === 0 ? (
             <p className="pt-8 text-center text-sm text-muted">
-              Say hi to {buddyName.split(" ")[0]} 👋
+              Say hi to {buddyFirstName} 👋
             </p>
           ) : (
             sorted.map((m) => (
@@ -178,7 +195,7 @@ export function ChatView({
         ) : null}
 
         <div className="border-t border-border bg-surface p-3">
-          <QuickMessages onSend={sendQuick} />
+          <QuickMessages suggestions={suggestions} onSend={sendQuick} />
         </div>
 
         <form

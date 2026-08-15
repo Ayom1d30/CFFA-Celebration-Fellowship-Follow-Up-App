@@ -10,13 +10,6 @@ export const XP_TABLE: Record<XPAction, number> = {
   special_mission: 20,
 };
 
-export const QUICK_MESSAGES = [
-  "How's your week going?",
-  "Are you coming this week?",
-  "Need prayer?",
-  "See you Tuesday👋",
-];
-
 export const APP_NAME = "CFFA";
 export const APP_TAGLINE = "Celebration Fellowship Follow-up App";
 
