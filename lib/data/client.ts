@@ -57,3 +57,34 @@ export function markFollowedUp(memberId: string) {
     return client.rpc("mark_followed_up", { p_user_id: memberId });
   });
 }
+
+export interface PairingSchedule {
+  enabled: boolean;
+  schedule: string | null;
+  weekday: number | null;
+  time: string | null;
+}
+
+export function getPairingSchedule() {
+  return run<PairingSchedule>(async () => {
+    if (!isSupabaseConfigured()) return { data: null, error: null };
+    const client = createClient();
+    return client.rpc("get_pairing_schedule");
+  });
+}
+
+export function setPairingSchedule(weekday: number, time: string) {
+  return run<PairingSchedule>(async () => {
+    if (!isSupabaseConfigured()) return { data: null, error: null };
+    const client = createClient();
+    return client.rpc("set_pairing_schedule", { p_weekday: weekday, p_time: time });
+  });
+}
+
+export function generatePairingsNow() {
+  return run<number>(async () => {
+    if (!isSupabaseConfigured()) return { data: null, error: null };
+    const client = createClient();
+    return client.rpc("generate_weekly_pairings");
+  });
+}

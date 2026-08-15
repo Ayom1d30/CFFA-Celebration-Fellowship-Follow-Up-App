@@ -1,5 +1,6 @@
 import { StatCard } from "@/components/admin/stat-card";
 import { NeedsFollowUpTable } from "@/components/admin/needs-follow-up-table";
+import { PairingScheduleCard } from "@/components/admin/pairing-schedule-card";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar } from "@/components/ui/avatar";
@@ -72,6 +73,8 @@ export default async function AdminDashboardPage() {
           </p>
         </Card>
       )}
+
+      <PairingScheduleCard />
 
       <section className="grid gap-6 lg:grid-cols-2">
         <Card className="overflow-hidden">
