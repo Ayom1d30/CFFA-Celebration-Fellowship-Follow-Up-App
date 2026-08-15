@@ -2,14 +2,23 @@ import { Card } from "@/components/ui/card";
 import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
-import { getChatList } from "@/lib/data/server";
+import { ChatListRefresher } from "@/components/member/chat-list-refresher";
+import { getChatList, getSessionUser } from "@/lib/data/server";
+import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { formatRelativeTime } from "@/lib/utils";
 
 export default async function ChatListPage() {
-  const conversations = await getChatList();
+  const [conversations, session] = await Promise.all([
+    getChatList(),
+    getSessionUser(),
+  ]);
 
   return (
     <div className="flex flex-col gap-5">
+      <ChatListRefresher
+        userId={session?.id ?? ""}
+        demo={session?.isDemo ?? false}
+      />
       <header>
         <h1 className="text-2xl font-bold text-foreground">Chat</h1>
         <p className="mt-1 text-muted">Follow up with your buddy.</p>
