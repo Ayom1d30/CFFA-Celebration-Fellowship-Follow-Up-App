@@ -32,6 +32,7 @@ export interface Message {
   message: string;
   isQuick: boolean;
   createdAt: string;
+  readAt?: string | null;
 }
 
 export interface CheckIn {

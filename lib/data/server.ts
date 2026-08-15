@@ -34,6 +34,7 @@ export interface ConversationSummary {
   lastMessage: string;
   lastMessageAt: string;
   lastMessageMine: boolean;
+  unread: number;
 }
 
 export interface ProfileData {
@@ -99,6 +100,7 @@ function toMessage(row: Record<string, unknown>): Message {
     message: String(row.message),
     isQuick: Boolean(row.is_quick),
     createdAt: String(row.created_at),
+    readAt: row.read_at ? String(row.read_at) : null,
   };
 }
 
@@ -234,6 +236,9 @@ export async function getChatList(): Promise<ConversationSummary[]> {
 
   if (user.isDemo) {
     const last = mock.MOCK_MESSAGES[mock.MOCK_MESSAGES.length - 1];
+    const unread = mock.MOCK_MESSAGES.filter(
+      (m) => m.senderId !== user.id && !m.readAt
+    ).length;
     return [
       {
         id: mock.MOCK_BUDDY.id,
@@ -243,6 +248,7 @@ export async function getChatList(): Promise<ConversationSummary[]> {
         lastMessage: last.message,
         lastMessageAt: last.createdAt,
         lastMessageMine: last.senderId === user.id,
+        unread,
       },
     ];
   }
@@ -250,7 +256,7 @@ export async function getChatList(): Promise<ConversationSummary[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("messages")
-    .select("sender_id, receiver_id, message, is_quick, created_at")
+    .select("sender_id, receiver_id, message, is_quick, read_at, created_at")
     .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`)
     .order("created_at", { ascending: false });
   if (error) return [];
@@ -259,6 +265,7 @@ export async function getChatList(): Promise<ConversationSummary[]> {
     string,
     { message: string; createdAt: string; mine: boolean }
   >();
+  const unreadByPartner = new Map<string, number>();
   for (const row of data ?? []) {
     const partner =
       row.sender_id === user.id ? row.receiver_id : row.sender_id;
@@ -268,6 +275,9 @@ export async function getChatList(): Promise<ConversationSummary[]> {
         createdAt: String(row.created_at),
         mine: row.sender_id === user.id,
       });
+    }
+    if (row.receiver_id === user.id && !row.read_at) {
+      unreadByPartner.set(partner, (unreadByPartner.get(partner) ?? 0) + 1);
     }
   }
 
@@ -296,21 +306,23 @@ export async function getChatList(): Promise<ConversationSummary[]> {
       lastMessage: m.message,
       lastMessageAt: m.createdAt,
       lastMessageMine: m.mine,
+      unread: unreadByPartner.get(id) ?? 0,
     };
   });
 }
 
-export async function userHasChat(): Promise<boolean> {
+export async function userHasUnreadMessages(): Promise<boolean> {
   const user = await getSessionUser();
   if (!user) return false;
-  if (user.isDemo) return mock.MOCK_MESSAGES.length > 0;
+  if (user.isDemo) return mock.MOCK_MESSAGES.some((m) => m.senderId !== user.id && !m.readAt);
   if (!isSupabaseConfigured()) return false;
 
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("messages")
     .select("id")
-    .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`)
+    .eq("receiver_id", user.id)
+    .is("read_at", null)
     .limit(1);
   if (error) return false;
   return (data ?? []).length > 0;
@@ -329,14 +341,31 @@ export async function getLeaderboardData(): Promise<LeaderboardEntry[]> {
   if (error) return [];
 
   const rows = (data ?? []) as JsonObject[];
-  return rows.map((r) => {
-    return {
+
+  // Deterministic display order: score desc, then name asc. The rank below is
+  // computed from scores only, so the tie-break never affects the rank shown.
+  const entries = rows
+    .map((r) => ({
       userId: asString(r.user_id),
       name: asString(r.name),
       avatar: asNullableString(r.avatar),
       totalXp: asNumber(r.total_xp),
-      rank: asNumber(r.rank),
-    };
+    }))
+    .sort(
+      (a, b) => b.totalXp - a.totalXp || a.name.localeCompare(b.name)
+    );
+
+  // Competition ranking (1, 2, 3, 3, 5): tied scores share the rank of the
+  // first member in the group; the next rank accounts for the tie. Never
+  // derived from the array index.
+  let rank = 0;
+  let prevXp: number | null = null;
+  return entries.map((e, i) => {
+    if (e.totalXp !== prevXp) {
+      prevXp = e.totalXp;
+      rank = i + 1;
+    }
+    return { ...e, rank };
   });
 }
 

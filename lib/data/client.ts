@@ -26,6 +26,14 @@ export function sendBuddyMessage(
   });
 }
 
+export function markConversationRead(partnerId: string) {
+  return run<void>(async () => {
+    if (!isSupabaseConfigured()) return { data: null, error: null };
+    const client = createClient();
+    return client.rpc("mark_conversation_read", { p_partner_id: partnerId });
+  });
+}
+
 export function completeWeeklyMission() {
   return run<void>(async () => {
     if (!isSupabaseConfigured()) return { data: null, error: null };
