@@ -59,6 +59,18 @@ function clientFor(accessToken) {
   });
 }
 
+// Client with the session applied (required for realtime, which authenticates
+// the websocket from the auth session rather than request headers).
+function sessionClient(session) {
+  const c = createClient(URL, ANON, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
+  return c.auth.setSession({
+    access_token: session.access_token,
+    refresh_token: session.refresh_token,
+  }).then(() => c);
+}
+
 async function signIn(email) {
   const c = clientFor();
   const { data, error } = await c.auth.signInWithPassword({
@@ -172,6 +184,46 @@ async function main() {
     messagesRes.data.every((m) => m.sender_id === mary.id || m.receiver_id === mary.id),
     messagesRes.error?.message);
 
+  // ---- Realtime chat (FR-04, live updates without reload) -------------------
+  console.log("\n== REALTIME CHAT ==");
+
+  const marySession = await clientFor().auth.signInWithPassword({
+    email: "mary@celebration.org",
+    password: SEED_PASSWORD,
+  });
+  const maryRt = await sessionClient(marySession.data.session);
+  let rtReceived = false;
+  const rtChannel = maryRt
+    .channel("smoke-realtime")
+    .on(
+      "postgres_changes",
+      {
+        event: "INSERT",
+        schema: "public",
+        table: "messages",
+        filter: `receiver_id=eq.${mary.id}`,
+      },
+      () => {
+        rtReceived = true;
+      }
+    )
+    .subscribe();
+  await new Promise((r) => setTimeout(r, 2000));
+  await buddyClient.rpc("send_message", {
+    p_buddy_id: mary.id,
+    p_message: "realtime smoke check",
+  });
+  const rtDeadline = Date.now() + 10000;
+  while (!rtReceived && Date.now() < rtDeadline) {
+    await new Promise((r) => setTimeout(r, 250));
+  }
+  check(
+    "new message arrives via realtime (no reload)",
+    rtReceived === true,
+    "realtime INSERT event not received"
+  );
+  await maryRt.removeChannel(rtChannel);
+
   // ---- Weekly mission (FR-06) ----------------------------------------------
   console.log("\n== WEEKLY MISSION ==");
 
@@ -269,8 +321,30 @@ async function main() {
   // ---- Scheduling (pg_cron) -------------------------------------------------
   console.log("\n== SCHEDULING ==");
 
-  const cron = await pg.query("select jobname, schedule from cron.job where jobname = 'weekly-pairings'");
-  check("pg_cron job registered", cron.rowCount === 1 && cron.rows[0].schedule === "0 2 * * 2", "job missing");
+  const cron = await pg.query("select jobname from cron.job where jobname = 'weekly-pairings'");
+  check("pg_cron job registered", cron.rowCount >= 1, "job missing");
+
+  // ---- Pairing schedule (FR-03 admin) ---------------------------------------
+  console.log("\n== PAIRING SCHEDULE ==");
+
+  const sched = await coord.client.rpc("get_pairing_schedule");
+  check(
+    "coordinator can read pairing schedule",
+    !sched.error && sched.data && sched.data.enabled === true,
+    sched.error?.message ?? "no schedule data"
+  );
+
+  const setSched = await coord.client.rpc("set_pairing_schedule", { p_weekday: 3, p_time: "03:30" });
+  check(
+    "coordinator can change pairing schedule",
+    !setSched.error && setSched.data && setSched.data.weekday === 3 && setSched.data.time === "03:30",
+    setSched.error?.message ?? "schedule not updated"
+  );
+
+  const schedDenied = await maryClient.rpc("get_pairing_schedule");
+  check("member cannot read pairing schedule", !!schedDenied.error, "expected error");
+
+  await coord.client.rpc("set_pairing_schedule", { p_weekday: 2, p_time: "02:00" });
 
   // ---- Membership views summary --------------------------------------------
   console.log("\n== SUMMARY ==");
