@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { MOBILE_NAV } from "@/lib/constants";
 import { Icon } from "@/components/ui/icons";
 
-export function BottomNavigation() {
+export function BottomNavigation({ hasChat = false }: { hasChat?: boolean }) {
   const pathname = usePathname();
 
   return (
@@ -24,7 +24,12 @@ export function BottomNavigation() {
                 active ? "text-primary" : "text-muted hover:text-foreground"
               }`}
             >
-              <Icon name={item.icon} className="h-6 w-6" />
+              <span className="relative">
+                <Icon name={item.icon} className="h-6 w-6" />
+                {item.href === "/chat" && hasChat ? (
+                  <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-primary ring-2 ring-surface" />
+                ) : null}
+              </span>
               {item.label}
             </Link>
           );

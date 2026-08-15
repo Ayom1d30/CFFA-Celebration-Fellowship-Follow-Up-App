@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 
-export function ChatListRefresher({
+export function ChatNavLive({
   userId,
   demo,
 }: {
@@ -18,7 +18,7 @@ export function ChatListRefresher({
     if (demo || !isSupabaseConfigured() || !userId) return;
     const client = createClient();
     const channel = client
-      .channel(`chatlist:${userId}`)
+      .channel(`chatnav:${userId}`)
       .on(
         "postgres_changes",
         {
@@ -27,9 +27,17 @@ export function ChatListRefresher({
           table: "messages",
           filter: `receiver_id=eq.${userId}`,
         },
-        () => {
-          router.refresh();
-        }
+        () => router.refresh()
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "messages",
+          filter: `sender_id=eq.${userId}`,
+        },
+        () => router.refresh()
       )
       .subscribe();
     return () => {

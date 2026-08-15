@@ -8,7 +8,13 @@ import { Avatar } from "@/components/ui/avatar";
 import { signOut } from "@/lib/actions/auth";
 import type { User } from "@/lib/types";
 
-export function Sidebar({ user }: { user: User }) {
+export function Sidebar({
+  user,
+  hasChat = false,
+}: {
+  user: User;
+  hasChat?: boolean;
+}) {
   const pathname = usePathname();
 
   return (
@@ -36,7 +42,12 @@ export function Sidebar({ user }: { user: User }) {
                   : "text-foreground/70 hover:bg-black/5 hover:text-foreground"
               }`}
             >
-              <Icon name={item.icon} className="h-5 w-5" />
+              <span className="relative">
+                <Icon name={item.icon} className="h-5 w-5" />
+                {item.href === "/chat" && hasChat ? (
+                  <span className="absolute -right-1 -top-1 h-2 w-2 rounded-full bg-primary" />
+                ) : null}
+              </span>
               {item.label}
             </Link>
           );

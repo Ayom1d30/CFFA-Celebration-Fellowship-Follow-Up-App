@@ -300,6 +300,22 @@ export async function getChatList(): Promise<ConversationSummary[]> {
   });
 }
 
+export async function userHasChat(): Promise<boolean> {
+  const user = await getSessionUser();
+  if (!user) return false;
+  if (user.isDemo) return mock.MOCK_MESSAGES.length > 0;
+  if (!isSupabaseConfigured()) return false;
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("messages")
+    .select("id")
+    .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`)
+    .limit(1);
+  if (error) return false;
+  return (data ?? []).length > 0;
+}
+
 export async function getLeaderboardData(): Promise<LeaderboardEntry[]> {
   const user = await getSessionUser();
   if (!user) return [];
