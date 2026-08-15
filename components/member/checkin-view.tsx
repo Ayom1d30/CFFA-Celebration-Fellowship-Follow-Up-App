@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import QRCode from "qrcode";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -27,14 +27,13 @@ export function CheckinView({
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [expiresIn, setExpiresIn] = useState(0);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     if (!token) return;
     const id = setInterval(() => setExpiresIn((s) => Math.max(0, s - 1)), 1000);
     return () => clearInterval(id);
   }, [token]);
-
-  const codeLabel = useMemo(() => token?.slice(0, 16) ?? "", [token]);
 
   async function generate() {
     setError(null);
@@ -93,6 +92,17 @@ export function CheckinView({
   const mm = String(Math.floor(expiresIn / 60)).padStart(2, "0");
   const ss = String(expiresIn % 60).padStart(2, "0");
 
+  async function copyCode() {
+    if (!token) return;
+    try {
+      await navigator.clipboard.writeText(token);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      setError("Could not copy — select the code below and copy manually.");
+    }
+  }
+
   return (
     <div className="flex flex-col gap-5">
       <header>
@@ -135,19 +145,29 @@ export function CheckinView({
               alt="Check-in QR code"
               className="rounded-xl border-4 border-white bg-white shadow-sm"
             />
-            <p className="max-w-full truncate font-mono text-xs text-muted">
-              {codeLabel}…
+            <p className="w-full break-all rounded-xl border border-border bg-surface p-3 font-mono text-xs text-muted">
+              {token}
             </p>
+            <div className="flex flex-wrap items-center justify-center gap-2">
+              <Button variant="secondary" size="sm" onClick={copyCode}>
+                {copied ? "Copied!" : "Copy code"}
+              </Button>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={generate}
+                disabled={loading}
+              >
+                {loading ? "Generating…" : "Generate new code"}
+              </Button>
+            </div>
             <p className="text-sm text-muted">
-              Ask {buddyName} to scan this code within{" "}
+              Ask {buddyName} to scan the QR or enter the code above within{" "}
               <span className="font-semibold text-foreground">
                 {mm}:{ss}
               </span>
               .
             </p>
-            <Button variant="secondary" onClick={generate} disabled={loading}>
-              {loading ? "Generating…" : "Generate new code"}
-            </Button>
           </>
         ) : (
           <>
