@@ -30,6 +30,7 @@ export const MOBILE_NAV: NavItem[] = [
   { href: "/home", label: "Home", icon: "home" },
   { href: "/chat", label: "Chat", icon: "chat" },
   { href: "/missions", label: "Missions", icon: "mission" },
+  { href: "/leaderboard", label: "Leaderboard", icon: "leaderboard" },
   { href: "/profile", label: "Profile", icon: "profile" },
 ];
 

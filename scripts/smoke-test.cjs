@@ -167,6 +167,59 @@ async function main() {
   check("buddy is a seeded member", !!buddyEmail, `unknown buddy id ${buddyId}`);
   const buddyClient = buddyEmail ? (await signIn(buddyEmail)).client : null;
 
+  // ---- Pairing invariants (mutual + coordinator parity) ---------------------
+  const weekDate = (
+    await pg.query("select date_trunc('week', now())::date::text as w")
+  ).rows[0].w;
+  const coordId = (
+    await pg.query("select id from public.users where role = 'coordinator' limit 1")
+  ).rows[0].id;
+  const memberCount = (
+    await pg.query("select count(*)::int as n from public.users where role = 'member'")
+  ).rows[0].n;
+
+  const reciprocal = await pg.query(
+    "select 1 from public.buddy_pairs where user_id = $1 and buddy_id = $2 and week = $3",
+    [buddyId, mary.id, weekDate]
+  );
+  check("buddy pair is mutual (reciprocal row exists)", reciprocal.rowCount === 1);
+
+  const selfPairs = await pg.query(
+    "select 1 from public.buddy_pairs where week = $1 and user_id = buddy_id",
+    [weekDate]
+  );
+  check("no member is paired with themselves", selfPairs.rowCount === 0);
+
+  const coordPairRows = await pg.query(
+    "select count(*)::int as n from public.buddy_pairs where week = $1 and (user_id = $2 or buddy_id = $2)",
+    [weekDate, coordId]
+  );
+  const coordPairs = coordPairRows.rows[0].n;
+  if (memberCount % 2 === 1) {
+    check(
+      "odd member count: coordinator fills the final slot (mutual)",
+      coordPairs === 2,
+      `expected coordinator to have 2 mutual rows, got ${coordPairs}`
+    );
+    const nonMutualCoord = await pg.query(
+      `select 1 from public.buddy_pairs bp
+       where bp.week = $1 and (bp.user_id = $2 or bp.buddy_id = $2)
+         and not exists (
+           select 1 from public.buddy_pairs bp2
+           where bp2.week = bp.week and bp2.user_id = bp.buddy_id
+             and bp2.buddy_id = bp.user_id
+         )`,
+      [weekDate, coordId]
+    );
+    check("coordinator pairing is mutual", nonMutualCoord.rowCount === 0);
+  } else {
+    check(
+      "even member count: coordinator not included",
+      coordPairs === 0,
+      `expected 0 coordinator rows, got ${coordPairs}`
+    );
+  }
+
   // ---- Messaging (FR-04 / FR-08) -------------------------------------------
   console.log("\n== MESSAGING ==");
 
@@ -323,6 +376,11 @@ async function main() {
 
   const lb = await maryClient.rpc("get_leaderboard", { p_limit: 50 });
   check("leaderboard returns rows", !lb.error && Array.isArray(lb.data) && lb.data.length > 0, lb.error?.message);
+  check(
+    "coordinator excluded from leaderboard",
+    Array.isArray(lb.data) && !lb.data.some((r) => String(r.user_id) === String(coordId)),
+    "coordinator must not be ranked among members"
+  );
 
   if (!lb.error && Array.isArray(lb.data) && lb.data.length > 0) {
     // Competition ranking: tied scores share a rank; the next rank skips the

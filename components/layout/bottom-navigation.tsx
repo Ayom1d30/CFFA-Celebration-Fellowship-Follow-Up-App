@@ -20,7 +20,7 @@ export function BottomNavigation({ hasUnread = false }: { hasUnread?: boolean })
             <Link
               key={item.href}
               href={item.href}
-              className={`flex flex-1 flex-col items-center gap-0.5 py-2.5 text-[11px] font-semibold transition-colors ${
+              className={`flex flex-1 flex-col items-center gap-0.5 py-2 text-[10px] font-semibold transition-colors ${
                 active ? "text-primary" : "text-muted hover:text-foreground"
               }`}
             >
