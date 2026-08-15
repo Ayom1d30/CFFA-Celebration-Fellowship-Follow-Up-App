@@ -10,10 +10,10 @@ import type { User } from "@/lib/types";
 
 export function Sidebar({
   user,
-  hasChat = false,
+  hasUnread = false,
 }: {
   user: User;
-  hasChat?: boolean;
+  hasUnread?: boolean;
 }) {
   const pathname = usePathname();
 
@@ -44,7 +44,7 @@ export function Sidebar({
             >
               <span className="relative">
                 <Icon name={item.icon} className="h-5 w-5" />
-                {item.href === "/chat" && hasChat ? (
+                {item.href === "/chat" && hasUnread ? (
                   <span className="absolute -right-1 -top-1 h-2 w-2 rounded-full bg-primary" />
                 ) : null}
               </span>

@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { MOBILE_NAV } from "@/lib/constants";
 import { Icon } from "@/components/ui/icons";
 
-export function BottomNavigation({ hasChat = false }: { hasChat?: boolean }) {
+export function BottomNavigation({ hasUnread = false }: { hasUnread?: boolean }) {
   const pathname = usePathname();
 
   return (
@@ -26,7 +26,7 @@ export function BottomNavigation({ hasChat = false }: { hasChat?: boolean }) {
             >
               <span className="relative">
                 <Icon name={item.icon} className="h-6 w-6" />
-                {item.href === "/chat" && hasChat ? (
+                {item.href === "/chat" && hasUnread ? (
                   <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-primary ring-2 ring-surface" />
                 ) : null}
               </span>

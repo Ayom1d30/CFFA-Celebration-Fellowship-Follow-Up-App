@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icons";
 import { Input } from "@/components/ui/input";
 import { getContextualSuggestions } from "@/lib/chat-suggestions";
-import { sendBuddyMessage } from "@/lib/data/client";
+import { markConversationRead, sendBuddyMessage } from "@/lib/data/client";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { createClient } from "@/lib/supabase/client";
 import type { Message } from "@/lib/types";
@@ -61,7 +61,7 @@ export function ChatView({
   }, [sorted.length]);
 
   useEffect(() => {
-    if (demo || !configured) return;
+    if (demo || !configured || !buddyId) return;
     const client = createClient();
     const channel = client
       .channel(`chat:${currentUserId}`)
@@ -88,10 +88,31 @@ export function ChatView({
                       message: String(row.message),
                       isQuick: Boolean(row.is_quick),
                       createdAt: String(row.created_at),
+                      readAt: row.read_at ? String(row.read_at) : null,
                     },
                   ]
             );
+            void markConversationRead(buddyId);
           }
+        }
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "messages",
+          filter: `sender_id=eq.${currentUserId}`,
+        },
+        (payload) => {
+          const row = payload.new as Record<string, unknown>;
+          if (String(row.receiver_id) !== buddyId) return;
+          const readAt = row.read_at ? String(row.read_at) : null;
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.id === String(row.id) ? { ...m, readAt } : m
+            )
+          );
         }
       )
       .subscribe();
@@ -99,6 +120,11 @@ export function ChatView({
       client.removeChannel(channel);
     };
   }, [buddyId, currentUserId, demo, configured]);
+
+  useEffect(() => {
+    if (demo || !configured || !buddyId) return;
+    void markConversationRead(buddyId);
+  }, [buddyId, demo, configured]);
 
   async function send(text: string) {
     const trimmed = text.trim();
@@ -137,6 +163,7 @@ export function ChatView({
         message: trimmed,
         isQuick: false,
         createdAt: new Date().toISOString(),
+        readAt: null,
       },
     ]);
     setXpEarned(true);
@@ -183,6 +210,13 @@ export function ChatView({
                 key={m.id}
                 message={m.message}
                 mine={m.senderId === currentUserId}
+                status={
+                  m.senderId === currentUserId
+                    ? demo || m.readAt
+                      ? "seen"
+                      : "sent"
+                    : undefined
+                }
               />
             ))
           )}

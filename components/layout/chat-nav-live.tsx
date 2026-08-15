@@ -39,6 +39,16 @@ export function ChatNavLive({
         },
         () => router.refresh()
       )
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "messages",
+          filter: `receiver_id=eq.${userId}`,
+        },
+        () => router.refresh()
+      )
       .subscribe();
     return () => {
       client.removeChannel(channel);

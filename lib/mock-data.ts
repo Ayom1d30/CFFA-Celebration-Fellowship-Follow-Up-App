@@ -78,9 +78,9 @@ export const MOCK_MISSION: WeeklyMission = {
 export const MOCK_LEADERBOARD: LeaderboardEntry[] = [
   { userId: "u-chi", name: "Chioma", totalXp: 1280, rank: 1 },
   { userId: "u-femi", name: "Femi", totalXp: 1120, rank: 2 },
+  { userId: "u-daniel", name: "Daniel", totalXp: 980, rank: 3 },
   { userId: "u-sarah", name: "Sarah", totalXp: 980, rank: 3 },
-  { userId: "u-daniel", name: "Daniel", totalXp: 860, rank: 4 },
-  { userId: "u-tolu", name: "Tolu", totalXp: 720, rank: 5 },
+  { userId: "u-tolu", name: "Tolu", totalXp: 860, rank: 5 },
   { userId: "u-blessing", name: "Blessing", totalXp: 640, rank: 6 },
   { userId: "u-ayo", name: "Ayo", totalXp: 340, rank: 7 },
 ];
